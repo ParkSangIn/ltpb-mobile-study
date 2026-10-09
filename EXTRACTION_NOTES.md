@@ -26,3 +26,5 @@ These rules were learned while extracting **More on Bidding → Responding to a 
 
 - Keep three distinct views: full lesson flow, embedded lesson quizzes, and the source chapter's separate Review and exercises section.
 - Card hands use Times New Roman only; lesson prose and auctions remain Arial-family.
+
+- Render Review exercises as question/answer pairs: hide the answer state until the learner chooses to reveal it; never expose control markers such as |ht| or require typed answers.
