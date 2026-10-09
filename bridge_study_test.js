@@ -33,21 +33,35 @@ function sourceSegments(raw,active=false){raw=normalizeRaw(raw);
   return {segments:out,active};
 }
 function decoratePages(list){let active=false;return list.map(page=>{const parsed=sourceSegments(page.raw,active);active=parsed.active;return {...page,segments:parsed.segments}})}
-function inline(raw,highlight=false){let s=plain(raw).replace(/\|[a-z]{1,2}\|[^|]*/gi,"").replace(/\b(?:ht|hf|hc|cq|lb|md|mb|va|cs|nt|ls|lc|hs)\|[^|]*/gi,"").replace(/\^-\{/g,"").replace(/\^-/g,"").replace(/\^[A-Z]\{/g,"").replace(/[{}]/g,"");s=s.replace(/\^\*B/g,"\uE001").replace(/\^\*I/g,"\uE002").replace(/\^\*U/g,"\uE003").replace(/\^\*H/g,"\uE004").replace(/\^\*N/g,"\uE005");let html=rich(s).replace(/\uE001/g,'<strong>').replace(/\uE002/g,'<em>').replace(/\uE003/g,'<u>').replace(/\uE004/g,'<span class="linkish">').replace(/\uE005/g,'</strong></em></u></span>');return {highlight,html}}
+function inline(raw,highlight=false){let s=plain(raw).replace(/\|[a-z]{1,2}\|[^|]*/gi,"").replace(/\b(?:ht|hf|hc|cq|lb|md|mb|va|cs|nt|ls|lc|hs)\|[^|]*/gi,"").replace(/\^-\{/g,"").replace(/\^-/g,"").replace(/\^[A-Z]\{/g,"").replace(/\^(?!\*)[A-Z]/g,"").replace(/[{}]/g,"");s=s.replace(/\^\*B/g,"\uE001").replace(/\^\*I/g,"\uE002").replace(/\^\*U/g,"\uE003").replace(/\^\*H/g,"\uE004").replace(/\^\*N/g,"\uE005");let html=rich(s).replace(/\uE001/g,'<strong>').replace(/\uE002/g,'<em>').replace(/\uE003/g,'<u>').replace(/\uE004/g,'<span class="linkish">').replace(/\uE005/g,'</strong></em></u></span>');return {highlight,html}}
 function bidValue(token){if(token==="p")return"Pass";if(token==="?")return"?";const m=token.match(/^([1-7])([cdhsn])$/i);if(!m)return rich(token);const suit=m[2].toLowerCase();if(suit==="n")return m[1]+"NT";const glyph={c:"♣",d:"♦",h:"♥",s:"♠"}[suit],color=(suit==="h"||suit==="d")?"red":"black";return m[1]+"<span class=\"auction-suit "+color+"\">"+glyph+"</span>"}
 function auction(raw){const start=Math.min(3,(raw.match(/^\s*/)||[""])[0].length),tokens=[...raw.matchAll(/([1-7][cdhsn]|p|\?)/gi)].map(m=>m[1].toLowerCase());if(!tokens.length)return"";const cells=Array(start).fill("").concat(tokens);while(cells.length%4)cells.push("");const rows=[];for(let i=0;i<cells.length;i+=4)rows.push('<div class="auction-row">'+cells.slice(i,i+4).map(x=>'<span>'+bidValue(x)+'</span>').join("")+'</div>');return '<div class="auction"><div class="auction-head"><span>West</span><span>North</span><span>East</span><span>South</span></div>'+rows.join("")+'</div>'}
-function diagramBlocks(raw){return [...raw.matchAll(/\|ia\|([^|]+)/gi)].map(m=>({pos:m.index,question:/\?/.test(m[1]),html:auction(m[1])})).filter(x=>x.html)}
+function diagramBlocks(raw){return [...raw.matchAll(/\|ia\|([^|]+)/gi)].map(m=>({pos:m.index,type:"auction",question:/\?/.test(m[1]),html:auction(m[1])})).filter(x=>x.html)}
 function diagrams(raw){return diagramBlocks(raw).map(x=>x.html).join("")}
 function handHtml(code){let x=code.trim().replace(/^p/i,"");if(/^ss/i.test(x))x=x.slice(1);const held={s:"",h:"",d:"",c:""};for(const m of x.matchAll(/([shdc])([akqjt2-9]+)/gi))held[m[1].toLowerCase()]=m[2].toUpperCase();const rows=[["s","♠","black"],["h","♥","red"],["d","♦","red"],["c","♣","black"]].filter(r=>held[r[0]]).map(r=>'<div class="'+r[2]+'"><span>'+r[1]+'</span> '+held[r[0]].split("").join(" ")+'</div>').join("");return rows?'<div class="hand">'+rows+'</div>':""}
-function handBlocks(raw){return [...raw.matchAll(/\|ih\|([^|]+)/gi)].map(m=>({pos:m.index,html:handHtml(m[1])})).filter(x=>x.html)}
+function handBlocks(raw){return [...raw.matchAll(/\|ih\|([^|]+)/gi)].map(m=>({pos:m.index,type:"hand",html:handHtml(m[1])})).filter(x=>x.html)}
 function hands(raw){return handBlocks(raw).map(x=>x.html).join("")}
 function isCheck(raw){return /\|ia\|[^|]*\?/i.test(raw)}
-function textBlock(x){const p=inline(x.raw,x.highlight),tag=p.highlight?"aside":"p",classes=[p.highlight?"callout":"","cs-"+(x.cs||"0"),"ht-"+(x.ht||"default"),"hf-"+(x.hf||"default")].filter(Boolean).join(" ");return {pos:x.pos||0,html:"<"+tag+" class=\""+classes+"\">"+p.html+"</"+tag+">"}}
+function renderBlocks(blocks){
+  let out="",i=0;
+  while(i<blocks.length){
+    const block=blocks[i];
+    if((block.type==="hand"||block.type==="auction")&&blocks[i+1]?.type===block.type){
+      const type=block.type,group=[];
+      while(i<blocks.length&&blocks[i].type===type){group.push(blocks[i++])}
+      out+='<div class="visual-row" style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">'+group.map(x=>x.html).join("")+'</div>';
+      continue;
+    }
+    out+=block.html;
+    i++;
+  }
+  return out;
+}function textBlock(x){const p=inline(x.raw,x.highlight),tag=p.highlight?"aside":"p",classes=[p.highlight?"callout":"","cs-"+(x.cs||"0"),"ht-"+(x.ht||"default"),"hf-"+(x.hf||"default")].filter(Boolean).join(" ");return {pos:x.pos||0,type:"text",html:"<"+tag+" class=\""+classes+"\">"+p.html+"</"+tag+">"}}
 function body(item,answer=false){
   const raw=normalizeRaw(item.raw),segments=item.segments||sourceSegments(raw,false).segments;
   const blocks=segments.map(textBlock).concat(diagramBlocks(raw),handBlocks(raw)).sort((a,b)=>a.pos-b.pos);
   let out="";
-  out+=blocks.length?blocks.map(x=>x.html).join(""):'<p class="empty">This screen contains a visual or interaction state in the original program.</p>';
+  out+=blocks.length?renderBlocks(blocks):'<p class="empty">This screen contains a visual or interaction state in the original program.</p>';
   if(isCheck(raw)&&!answer)out+='<div class="selfcheck">Self-check prompt in the original lesson — think before moving on.</div>';
   return out;
 }
