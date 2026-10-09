@@ -4,7 +4,7 @@ These rules were learned while extracting **More on Bidding → Responding to a 
 
 ## Source syntax
 
-- Lesson text is stored after `|at|`. `|cs|N` immediately before it supplies the source palette index.
+- Lesson text is usually stored after `|at|`, but some screens place ordinary text directly after `|nt|`. Extract both. `|cs|N` immediately before the text supplies the source palette index.
 - `|ia|...|at|` is an auction diagram and `|ih|...|at|` is a hand diagram. The closing `|at|` can be followed by ordinary lesson text, so preserve that following text rather than discarding the whole segment.
 - `^-{` opens a highlighted callout. A following segment beginning with `{` continues the same callout, often across source screens. `^-` closes it.
 - Some grouped callouts have no final `^-`. If a later text segment does not begin with `{`, treat that as an implicit end of the callout. This prevents ordinary paragraphs from inheriting a preceding box.

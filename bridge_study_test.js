@@ -5,7 +5,7 @@ function rich(s){return esc(s).replace(/♠/g,'<span class="suit black">♠</spa
 function plain(s){return s.replace(/\r?\n/g," ").replace(/@C/g,"♣").replace(/@D/g,"♦").replace(/@H/g,"♥").replace(/@S/g,"♠").replace(/@N/g,"NT").replace(/\s+/g," ").trim()}
 function title(raw){const m=raw.match(/\|qx\|[^,|]+,([^|]+)/i);return m?plain(m[1].replace(/\^\*[^\s]/g,"")):""}
 function sourceSegments(raw,active=false){
-  const tags=[...raw.matchAll(/\|at\|/gi)],source=[],out=[];
+  const tags=[...raw.matchAll(/\|(at|nt)\|/gi)],source=[],out=[];
   for(const tag of tags){
     const before=raw.slice(0,tag.index);
     const after=tag.index+tag[0].length,next=raw.slice(after).search(/\|[a-z]{1,2}\|/i),text=next<0?raw.slice(after):raw.slice(after,after+next);
