@@ -49,7 +49,7 @@ function renderBlocks(blocks){
     if((block.type==="hand"||block.type==="auction")&&blocks[i+1]?.type===block.type){
       const type=block.type,group=[];
       while(i<blocks.length&&blocks[i].type===type){group.push(blocks[i++])}
-      out+='<div class="visual-row" style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">'+group.map(x=>x.html).join("")+'</div>';
+      out+='<div class="visual-row">'+group.map(x=>'<div class="visual-item">'+x.html+'</div>').join("")+'</div>';
       continue;
     }
     out+=block.html;
