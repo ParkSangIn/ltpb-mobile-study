@@ -7,9 +7,7 @@ function title(raw){const m=raw.match(/\|qx\|[^,|]+,([^|]+)/i);return m?plain(m[
 function sourceSegments(raw,active=false){
   const tags=[...raw.matchAll(/\|at\|/gi)],source=[],out=[];
   for(const tag of tags){
-    const before=raw.slice(0,tag.index),previous=[...before.matchAll(/\|([a-z]{1,2})\|/gi)].pop()?.[1]?.toLowerCase();
-    // |at| following |ia| or |ih| closes an auction/hand block; it is not lesson text.
-    if(previous==="ia"||previous==="ih")continue;
+    const before=raw.slice(0,tag.index);
     const after=tag.index+tag[0].length,next=raw.slice(after).search(/\|[a-z]{1,2}\|/i),text=next<0?raw.slice(after):raw.slice(after,after+next);
     const last=pattern=>{const all=[...before.matchAll(pattern)];return all.length?all[all.length-1][1]:""};
     source.push({raw:text,cs:last(/\|cs\|(\d+)/gi),ht:last(/\|ht\|([^|\r\n]+)/gi),hf:last(/\|hf\|([^|\r\n]+)/gi)});
@@ -17,6 +15,8 @@ function sourceSegments(raw,active=false){
   const add=(meta,text,highlight)=>{if(plain(text).length>3)out.push({...meta,raw:text,highlight})};
   for(const meta of source){
     let text=meta.raw,pos=0;
+    // A continued callout must begin with {. Otherwise an omitted closing marker ends it.
+    if(active&&!/^\s*\{/.test(text))active=false;
     while(pos<text.length){
       if(active){
         const close=text.indexOf("^-",pos);
