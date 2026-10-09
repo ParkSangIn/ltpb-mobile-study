@@ -44,18 +44,18 @@ function hands(raw){return handBlocks(raw).map(x=>x.html).join("")}
 function isCheck(raw){return /\|ia\|[^|]*\?/i.test(raw)}
 function textBlock(x){const p=inline(x.raw,x.highlight),tag=p.highlight?"aside":"p",classes=[p.highlight?"callout":"","cs-"+(x.cs||"0"),"ht-"+(x.ht||"default"),"hf-"+(x.hf||"default")].filter(Boolean).join(" ");return {pos:x.pos||0,html:"<"+tag+" class=\""+classes+"\">"+p.html+"</"+tag+">"}}
 function body(item,answer=false){
-  const raw=normalizeRaw(item.raw),heading=title(raw),segments=item.segments||sourceSegments(raw,false).segments;
+  const raw=normalizeRaw(item.raw),segments=item.segments||sourceSegments(raw,false).segments;
   const blocks=segments.map(textBlock).concat(diagramBlocks(raw),handBlocks(raw)).sort((a,b)=>a.pos-b.pos);
-  let out=heading?"<h2>"+rich(heading)+"</h2>":"";
+  let out="";
   out+=blocks.length?blocks.map(x=>x.html).join(""):'<p class="empty">This screen contains a visual or interaction state in the original program.</p>';
   if(isCheck(raw)&&!answer)out+='<div class="selfcheck">Self-check prompt in the original lesson — think before moving on.</div>';
   return out;
 }
 function reviewBody(item){
-  const raw=normalizeRaw(item.raw),heading=title(raw),segments=item.segments||sourceSegments(raw,false).segments,auctions=diagramBlocks(raw),question=auctions.find(x=>x.question),answer=auctions.find(x=>!x.question&&question&&x.pos>question.pos);
+  const raw=normalizeRaw(item.raw),segments=item.segments||sourceSegments(raw,false).segments,auctions=diagramBlocks(raw),question=auctions.find(x=>x.question),answer=auctions.find(x=>!x.question&&question&&x.pos>question.pos);
   if(!question||!answer)return body(item);
   const handsOnScreen=handBlocks(raw),text=segments.map(textBlock),intro=text.filter(x=>x.pos<question.pos),explanation=text.filter(x=>x.pos>answer.pos),labelMatch=raw.match(/\|lb\|([^|]+)/i),label=labelMatch?plain(labelMatch[1].replace(/\*B/g,"").replace(/\^\^[^|\s]*/g,"")):"Think about your response before moving on.";
-  let out=heading?"<h2>"+rich(heading)+"</h2>":"";
+  let out="";
   out+=intro.sort((a,b)=>a.pos-b.pos).map(x=>x.html).join("");
   out+=question.html;
   out+=handsOnScreen.sort((a,b)=>a.pos-b.pos).map(x=>x.html).join("");
@@ -69,10 +69,9 @@ const styledPages=decoratePages(pages),styledReviewPages=decoratePages(reviewPag
 function draw(){
   if(mode==="lesson"||mode==="review"){
     const isLesson=mode==="lesson",list=isLesson?styledPages:styledReviewPages;
-    const heading=isLesson?"Responding to a 1 of a suit opening":"Responding to a 1 of a suit opening — Review and exercises";
     countEl.textContent=list.length+(isLesson?" original lesson screens · scroll":" original review screens · scroll");
     pageEl.className="chapter";
-    pageEl.innerHTML="<h2>"+heading+"</h2>"+list.map(p=>'<section class="source-screen">'+(isLesson?body(p):reviewBody(p))+'</section>').join("");
+    pageEl.innerHTML=list.map(p=>'<section class="source-screen">'+(isLesson?body(p):reviewBody(p))+'</section>').join("");
     $(".nav").hidden=true;
     return;
   }
