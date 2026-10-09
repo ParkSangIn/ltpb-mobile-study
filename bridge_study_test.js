@@ -60,6 +60,7 @@ function reviewBody(item){
   out+=question.html;
   out+=handsOnScreen.sort((a,b)=>a.pos-b.pos).map(x=>x.html).join("");
   out+='<div class="selfcheck">'+rich(label)+'</div>';
+  out+='<div class="review-answer-gap" aria-hidden="true"></div>';
   out+=answer.html;
   out+=explanation.sort((a,b)=>a.pos-b.pos).map(x=>x.html).join("");
   return out;
