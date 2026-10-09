@@ -22,3 +22,7 @@ These rules were learned while extracting **More on Bidding → Responding to a 
 
 - Keep `bridge_study_test_data.js` (source data), `bridge_study_test.js` (parser/renderer), and `bridge_study_test.css` separate.
 - Increment the CSS/JS query version in both HTML entry points when deploying parser or style changes, so desktop and mobile do not retain different cached renderers.
+## Study layers
+
+- Keep three distinct views: full lesson flow, embedded lesson quizzes, and the source chapter's separate Review and exercises section.
+- Card hands use Times New Roman only; lesson prose and auctions remain Arial-family.

@@ -1,4 +1,4 @@
-const pages=window.BRIDGE_PAGES||[];let mode="lesson",index=0,revealed=false;
+const pages=window.BRIDGE_PAGES||[],reviewPages=window.BRIDGE_REVIEW_PAGES||[];let mode="lesson",index=0,revealed=false;
 const $=s=>document.querySelector(s),pageEl=$("#page"),countEl=$("#count"),back=$("#back"),next=$("#next");let textSize=19;try{textSize=Number(localStorage.getItem("bridge-study-font-size"))||19}catch{}function applyTextSize(){textSize=Math.max(15,Math.min(29,textSize));document.documentElement.style.setProperty("--font-size",textSize+"px");try{localStorage.setItem("bridge-study-font-size",textSize)}catch{}}
 const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 function rich(s){return esc(s).replace(/♠/g,'<span class="suit black">♠</span>').replace(/♣/g,'<span class="suit black">♣</span>').replace(/♥/g,'<span class="suit red">♥</span>').replace(/♦/g,'<span class="suit red">♦</span>')}
@@ -39,10 +39,33 @@ function diagrams(raw){return [...raw.matchAll(/\|ia\|([^|]+)/gi)].map(m=>auctio
 function hands(raw){return [...raw.matchAll(/\|ih\|([^|]+)/gi)].map(m=>m[1].trim()).map(code=>{let x=code.replace(/^p/i,"");if(/^ss/i.test(x))x=x.slice(1);const held={s:"",h:"",d:"",c:""};for(const m of x.matchAll(/([shdc])([akqjt2-9]+)/gi))held[m[1].toLowerCase()]=m[2].toUpperCase();const rows=[["s","♠","black"],["h","♥","red"],["d","♦","red"],["c","♣","black"]].filter(r=>held[r[0]]).map(r=>'<div class="'+r[2]+'"><span>'+r[1]+'</span> '+held[r[0]].split("").join(" ")+'</div>').join("");return rows?'<div class="hand">'+rows+'</div>':""}).join("")}
 function isCheck(raw){return /\|ia\|[^|]*\?/i.test(raw)}
 function body(item,answer=false){const heading=title(item.raw),segments=item.segments||sourceSegments(item.raw,false).segments;let out=heading?'<h2>'+rich(heading)+'</h2>':"";out+=segments.length?segments.map(x=>{const p=inline(x.raw,x.highlight),tag=p.highlight?'aside':'p',classes=[p.highlight?'callout':'','cs-'+(x.cs||'0'),'ht-'+(x.ht||'default'),'hf-'+(x.hf||'default')].filter(Boolean).join(' ');return '<'+tag+' class="'+classes+'">'+p.html+'</'+tag+'>'}).join(""):'<p class="empty">This screen contains a visual or interaction state in the original program.</p>';out+=diagrams(item.raw)+hands(item.raw);if(isCheck(item.raw)&&!answer)out+='<div class="selfcheck">Self-check prompt in the original lesson — think before moving on.</div>';return out}
-const styledPages=decoratePages(pages);const checks=styledPages.map((p,i)=>({prompt:p,answer:styledPages[i+1]})).filter(x=>x.answer&&isCheck(x.prompt.raw));
-function draw(){if(mode==="lesson"){countEl.textContent=styledPages.length+" original screens · scroll";pageEl.className="chapter";pageEl.innerHTML='<h2>Responding to a 1 of a suit opening</h2>'+styledPages.map(p=>'<section class="source-screen">'+body(p)+'</section>').join("");$(".nav").hidden=true;return}const item=checks[index];pageEl.className="";$(".nav").hidden=false;if(!item){pageEl.innerHTML='<p class="empty">No extractable review prompts found.</p>';return}countEl.textContent=(index+1)+" / "+checks.length;let out='<h2>Quick review</h2>'+body(item.prompt);if(!revealed)out+='<button class="reveal" id="reveal">Reveal the original next screen</button>';else out+='<section class="answer"><p class="page-label">Original following screen</p>'+body(item.answer,true)+'</section>';pageEl.innerHTML=out;$("#reveal")?.addEventListener("click",()=>{revealed=true;draw()});back.disabled=index===0;next.disabled=index===checks.length-1&&revealed;next.textContent=!revealed?"Reveal answer":"Next →"}
+const styledPages=decoratePages(pages),styledReviewPages=decoratePages(reviewPages);const checks=styledPages.map((p,i)=>({prompt:p,answer:styledPages[i+1]})).filter(x=>x.answer&&isCheck(x.prompt.raw));
+function draw(){
+  if(mode==="lesson"||mode==="review"){
+    const isLesson=mode==="lesson",list=isLesson?styledPages:styledReviewPages;
+    const heading=isLesson?"Responding to a 1 of a suit opening":"Responding to a 1 of a suit opening — Review and exercises";
+    countEl.textContent=list.length+(isLesson?" original lesson screens · scroll":" original review screens · scroll");
+    pageEl.className="chapter";
+    pageEl.innerHTML="<h2>"+heading+"</h2>"+list.map(p=>'<section class="source-screen">'+body(p)+'</section>').join("");
+    $(".nav").hidden=true;
+    return;
+  }
+  const item=checks[index];
+  pageEl.className="";
+  $(".nav").hidden=false;
+  if(!item){pageEl.innerHTML='<p class="empty">No extractable lesson prompts found.</p>';return}
+  countEl.textContent=(index+1)+" / "+checks.length;
+  let out="<h2>Lesson quizzes</h2>"+body(item.prompt);
+  if(!revealed)out+='<button class="reveal" id="reveal">Reveal the original next screen</button>';
+  else out+='<section class="answer"><p class="page-label">Original following screen</p>'+body(item.answer,true)+'</section>';
+  pageEl.innerHTML=out;
+  $("#reveal")?.addEventListener("click",()=>{revealed=true;draw()});
+  back.disabled=index===0;
+  next.disabled=index===checks.length-1&&revealed;
+  next.textContent=!revealed?"Reveal answer":"Next →";
+}
 back.onclick=()=>{if(index){index--;revealed=false;draw()}};
 next.onclick=()=>{if(!revealed){revealed=true;draw();return}if(index<checks.length-1){index++;revealed=false;draw()}};
 document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{mode=b.dataset.mode;index=0;revealed=false;document.querySelectorAll("[data-mode]").forEach(x=>x.classList.toggle("on",x===b));window.scrollTo(0,0);draw()}));
-$("#font-down").addEventListener("click",()=>{textSize-=2;applyTextSize()});$("#font-up").addEventListener("click",()=>{textSize+=2;applyTextSize()});$("#font-reset").addEventListener("click",()=>{textSize=19;applyTextSize()});applyTextSize();document.addEventListener("keydown",e=>{if(e.altKey||e.ctrlKey||e.metaKey||["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName))return;if(mode==="lesson"&&(e.key==="ArrowLeft"||e.key==="ArrowRight")){e.preventDefault();window.scrollBy({top:(e.key==="ArrowRight"?1:-1)*Math.round(innerHeight*.72),behavior:"smooth"});return}if(e.key==="ArrowLeft"){e.preventDefault();back.click()}if(e.key==="ArrowRight"){e.preventDefault();next.click()}});
+$("#font-down").addEventListener("click",()=>{textSize-=2;applyTextSize()});$("#font-up").addEventListener("click",()=>{textSize+=2;applyTextSize()});$("#font-reset").addEventListener("click",()=>{textSize=19;applyTextSize()});applyTextSize();document.addEventListener("keydown",e=>{if(e.altKey||e.ctrlKey||e.metaKey||["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName))return;if((mode==="lesson"||mode==="review")&&(e.key==="ArrowLeft"||e.key==="ArrowRight")){e.preventDefault();window.scrollBy({top:(e.key==="ArrowRight"?1:-1)*Math.round(innerHeight*.72),behavior:"smooth"});return}if(e.key==="ArrowLeft"){e.preventDefault();back.click()}if(e.key==="ArrowRight"){e.preventDefault();next.click()}});
 draw();
