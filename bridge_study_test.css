@@ -388,37 +388,3 @@ p {
   flex: 1 1 260px;
   min-width: 0;
 }
-
-.scroll-scrubber {
-  display: none;
-}
-
-@media (max-width: 700px) {
-  .scroll-scrubber {
-    display: grid;
-    place-items: center;
-    position: fixed;
-    z-index: 10;
-    right: 7px;
-    top: 23vh;
-    width: 38px;
-    height: 54vh;
-    min-height: 190px;
-    padding: 8px 0;
-    border: 1px solid rgba(23,76,56,.25);
-    border-radius: 20px;
-    background: rgba(255,255,255,.82);
-    backdrop-filter: blur(3px);
-  }
-  .scroll-scrubber[hidden] {
-    display: none
-  }
-  #scroll-range {
-    writing-mode: vertical-lr;
-    direction: rtl;
-    width: 28px;
-    height: 100%;
-    accent-color: #174c38;
-    touch-action: none;
-  }
-}
