@@ -4,15 +4,16 @@ const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 function rich(s){return esc(s).replace(/♠/g,'<span class="suit black">♠</span>').replace(/♣/g,'<span class="suit black">♣</span>').replace(/♥/g,'<span class="suit red">♥</span>').replace(/♦/g,'<span class="suit red">♦</span>')}
 function plain(s){return s.replace(/\r?\n/g," ").replace(/@C/g,"♣").replace(/@D/g,"♦").replace(/@H/g,"♥").replace(/@S/g,"♠").replace(/@N/g,"NT").replace(/\s+/g," ").trim()}
 function title(raw){const m=raw.match(/\|qx\|[^,|]+,([^|]+)/i);return m?plain(m[1].replace(/\^\*[^\s]/g,"")):""}
-function sourceSegments(raw,active=false){
+function normalizeRaw(raw){return raw.replace(/\|\s*\r?\n\s*([a-z]{1,2})\|/gi,"|$1|")}
+function sourceSegments(raw,active=false){raw=normalizeRaw(raw);
   const tags=[...raw.matchAll(/\|(at|nt)\|/gi)],source=[],out=[];
   for(const tag of tags){
     const before=raw.slice(0,tag.index);
     const after=tag.index+tag[0].length,next=raw.slice(after).search(/\|[a-z]{1,2}\|/i),text=next<0?raw.slice(after):raw.slice(after,after+next);
     const last=pattern=>{const all=[...before.matchAll(pattern)];return all.length?all[all.length-1][1]:""};
-    source.push({raw:text,cs:last(/\|cs\|(\d+)/gi),ht:last(/\|ht\|([^|\r\n]+)/gi),hf:last(/\|hf\|([^|\r\n]+)/gi)});
+    source.push({raw:text,pos:after,cs:last(/\|cs\|(\d+)/gi),ht:last(/\|ht\|([^|\r\n]+)/gi),hf:last(/\|hf\|([^|\r\n]+)/gi)});
   }
-  const add=(meta,text,highlight)=>{if(plain(text).length>3)out.push({...meta,raw:text,highlight})};
+  const add=(meta,text,highlight,offset)=>{if(plain(text).length>3)out.push({...meta,raw:text,highlight,pos:(meta.pos||0)+offset})};
   for(const meta of source){
     let text=meta.raw,pos=0;
     // A continued callout must begin with {. Otherwise an omitted closing marker ends it.
@@ -20,12 +21,12 @@ function sourceSegments(raw,active=false){
     while(pos<text.length){
       if(active){
         const close=text.indexOf("^-",pos);
-        if(close<0){add(meta,text.slice(pos),true);pos=text.length}
-        else{add(meta,text.slice(pos,close),true);active=false;pos=close+2}
+        if(close<0){add(meta,text.slice(pos),true,pos);pos=text.length}
+        else{add(meta,text.slice(pos,close),true,pos);active=false;pos=close+2}
       }else{
         const start=text.indexOf("^-{",pos);
-        if(start<0){add(meta,text.slice(pos),false);pos=text.length}
-        else{add(meta,text.slice(pos,start),false);active=true;pos=start+3}
+        if(start<0){add(meta,text.slice(pos),false,pos);pos=text.length}
+        else{add(meta,text.slice(pos,start),false,pos);active=true;pos=start+3}
       }
     }
   }
@@ -35,10 +36,20 @@ function decoratePages(list){let active=false;return list.map(page=>{const parse
 function inline(raw,highlight=false){let s=plain(raw).replace(/\|[a-z]{1,2}\|[^|]*/gi,"").replace(/\b(?:ht|hf|hc|cq|lb|md|mb|va|cs|nt|ls|lc|hs)\|[^|]*/gi,"").replace(/\^-\{/g,"").replace(/\^-/g,"").replace(/\^[A-Z]\{/g,"").replace(/[{}]/g,"");s=s.replace(/\^\*B/g,"\uE001").replace(/\^\*I/g,"\uE002").replace(/\^\*U/g,"\uE003").replace(/\^\*H/g,"\uE004").replace(/\^\*N/g,"\uE005");let html=rich(s).replace(/\uE001/g,'<strong>').replace(/\uE002/g,'<em>').replace(/\uE003/g,'<u>').replace(/\uE004/g,'<span class="linkish">').replace(/\uE005/g,'</strong></em></u></span>');return {highlight,html}}
 function bidValue(token){if(token==="p")return"Pass";if(token==="?")return"?";const m=token.match(/^([1-7])([cdhsn])$/i);if(!m)return rich(token);const suit=m[2].toLowerCase();if(suit==="n")return m[1]+"NT";const glyph={c:"♣",d:"♦",h:"♥",s:"♠"}[suit],color=(suit==="h"||suit==="d")?"red":"black";return m[1]+"<span class=\"auction-suit "+color+"\">"+glyph+"</span>"}
 function auction(raw){const start=Math.min(3,(raw.match(/^\s*/)||[""])[0].length),tokens=[...raw.matchAll(/([1-7][cdhsn]|p|\?)/gi)].map(m=>m[1].toLowerCase());if(!tokens.length)return"";const cells=Array(start).fill("").concat(tokens);while(cells.length%4)cells.push("");const rows=[];for(let i=0;i<cells.length;i+=4)rows.push('<div class="auction-row">'+cells.slice(i,i+4).map(x=>'<span>'+bidValue(x)+'</span>').join("")+'</div>');return '<div class="auction"><div class="auction-head"><span>West</span><span>North</span><span>East</span><span>South</span></div>'+rows.join("")+'</div>'}
-function diagrams(raw){return [...raw.matchAll(/\|ia\|([^|]+)/gi)].map(m=>auction(m[1])).filter(Boolean).join("")}
-function hands(raw){return [...raw.matchAll(/\|ih\|([^|]+)/gi)].map(m=>m[1].trim()).map(code=>{let x=code.replace(/^p/i,"");if(/^ss/i.test(x))x=x.slice(1);const held={s:"",h:"",d:"",c:""};for(const m of x.matchAll(/([shdc])([akqjt2-9]+)/gi))held[m[1].toLowerCase()]=m[2].toUpperCase();const rows=[["s","♠","black"],["h","♥","red"],["d","♦","red"],["c","♣","black"]].filter(r=>held[r[0]]).map(r=>'<div class="'+r[2]+'"><span>'+r[1]+'</span> '+held[r[0]].split("").join(" ")+'</div>').join("");return rows?'<div class="hand">'+rows+'</div>':""}).join("")}
+function diagramBlocks(raw){return [...raw.matchAll(/\|ia\|([^|]+)/gi)].map(m=>({pos:m.index,html:auction(m[1])})).filter(x=>x.html)}
+function diagrams(raw){return diagramBlocks(raw).map(x=>x.html).join("")}
+function handHtml(code){let x=code.trim().replace(/^p/i,"");if(/^ss/i.test(x))x=x.slice(1);const held={s:"",h:"",d:"",c:""};for(const m of x.matchAll(/([shdc])([akqjt2-9]+)/gi))held[m[1].toLowerCase()]=m[2].toUpperCase();const rows=[["s","♠","black"],["h","♥","red"],["d","♦","red"],["c","♣","black"]].filter(r=>held[r[0]]).map(r=>'<div class="'+r[2]+'"><span>'+r[1]+'</span> '+held[r[0]].split("").join(" ")+'</div>').join("");return rows?'<div class="hand">'+rows+'</div>':""}
+function handBlocks(raw){return [...raw.matchAll(/\|ih\|([^|]+)/gi)].map(m=>({pos:m.index,html:handHtml(m[1])})).filter(x=>x.html)}
+function hands(raw){return handBlocks(raw).map(x=>x.html).join("")}
 function isCheck(raw){return /\|ia\|[^|]*\?/i.test(raw)}
-function body(item,answer=false){const heading=title(item.raw),segments=item.segments||sourceSegments(item.raw,false).segments;let out=heading?'<h2>'+rich(heading)+'</h2>':"";out+=segments.length?segments.map(x=>{const p=inline(x.raw,x.highlight),tag=p.highlight?'aside':'p',classes=[p.highlight?'callout':'','cs-'+(x.cs||'0'),'ht-'+(x.ht||'default'),'hf-'+(x.hf||'default')].filter(Boolean).join(' ');return '<'+tag+' class="'+classes+'">'+p.html+'</'+tag+'>'}).join(""):'<p class="empty">This screen contains a visual or interaction state in the original program.</p>';out+=diagrams(item.raw)+hands(item.raw);if(isCheck(item.raw)&&!answer)out+='<div class="selfcheck">Self-check prompt in the original lesson — think before moving on.</div>';return out}
+function body(item,answer=false){
+  const raw=normalizeRaw(item.raw),heading=title(raw),segments=item.segments||sourceSegments(raw,false).segments;
+  const blocks=segments.map(x=>{const p=inline(x.raw,x.highlight),tag=p.highlight?"aside":"p",classes=[p.highlight?"callout":"","cs-"+(x.cs||"0"),"ht-"+(x.ht||"default"),"hf-"+(x.hf||"default")].filter(Boolean).join(" ");return {pos:x.pos||0,html:"<"+tag+" class=\""+classes+"\">"+p.html+"</"+tag+">"}}).concat(diagramBlocks(raw),handBlocks(raw)).sort((a,b)=>a.pos-b.pos);
+  let out=heading?"<h2>"+rich(heading)+"</h2>":"";
+  out+=blocks.length?blocks.map(x=>x.html).join(""):'<p class="empty">This screen contains a visual or interaction state in the original program.</p>';
+  if(isCheck(raw)&&!answer)out+='<div class="selfcheck">Self-check prompt in the original lesson — think before moving on.</div>';
+  return out;
+}
 const styledPages=decoratePages(pages),styledReviewPages=decoratePages(reviewPages);const checks=styledPages.map((p,i)=>({prompt:p,answer:styledPages[i+1]})).filter(x=>x.answer&&isCheck(x.prompt.raw));
 function draw(){
   if(mode==="lesson"||mode==="review"){
