@@ -4,7 +4,34 @@ const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 function rich(s){return esc(s).replace(/♠/g,'<span class="suit black">♠</span>').replace(/♣/g,'<span class="suit black">♣</span>').replace(/♥/g,'<span class="suit red">♥</span>').replace(/♦/g,'<span class="suit red">♦</span>')}
 function plain(s){return s.replace(/\r?\n/g," ").replace(/@C/g,"♣").replace(/@D/g,"♦").replace(/@H/g,"♥").replace(/@S/g,"♠").replace(/@N/g,"NT").replace(/\s+/g," ").trim()}
 function title(raw){const m=raw.match(/\|qx\|[^,|]+,([^|]+)/i);return m?plain(m[1].replace(/\^\*[^\s]/g,"")):""}
-function sourceSegments(raw,active=false){const source=[...raw.matchAll(/\|at\|([\s\S]*?)(?=\|\s*[a-z]{1,2}\||$)/gi)].map(m=>{const before=raw.slice(0,m.index),last=(pattern)=>{const all=[...before.matchAll(pattern)];return all.length?all[all.length-1][1]:""};return {raw:m[1],cs:last(/\|cs\|(\d+)/gi),ht:last(/\|ht\|([^|\r\n]+)/gi),hf:last(/\|hf\|([^|\r\n]+)/gi)}}),out=[];for(const meta of source){let text=meta.raw,pos=0;while(pos<text.length){if(active){const close=text.indexOf("^-",pos);if(close<0){const chunk=text.slice(pos);if(plain(chunk).length>3)out.push({...meta,raw:chunk,highlight:true});pos=text.length}else{const chunk=text.slice(pos,close);if(plain(chunk).length>3)out.push({...meta,raw:chunk,highlight:true});active=false;pos=close+2}}else{const start=text.indexOf("^-{",pos);if(start<0){const chunk=text.slice(pos);if(plain(chunk).length>3)out.push({...meta,raw:chunk,highlight:false});pos=text.length}else{const chunk=text.slice(pos,start);if(plain(chunk).length>3)out.push({...meta,raw:chunk,highlight:false});active=true;pos=start+3}}}}return {segments:out,active}}function decoratePages(list){let active=false;return list.map(page=>{const parsed=sourceSegments(page.raw,active);active=parsed.active;return {...page,segments:parsed.segments}})}
+function sourceSegments(raw,active=false){
+  const tags=[...raw.matchAll(/\|at\|/gi)],source=[],out=[];
+  for(const tag of tags){
+    const before=raw.slice(0,tag.index),previous=[...before.matchAll(/\|([a-z]{1,2})\|/gi)].pop()?.[1]?.toLowerCase();
+    // |at| following |ia| or |ih| closes an auction/hand block; it is not lesson text.
+    if(previous==="ia"||previous==="ih")continue;
+    const after=tag.index+tag[0].length,next=raw.slice(after).search(/\|[a-z]{1,2}\|/i),text=next<0?raw.slice(after):raw.slice(after,after+next);
+    const last=pattern=>{const all=[...before.matchAll(pattern)];return all.length?all[all.length-1][1]:""};
+    source.push({raw:text,cs:last(/\|cs\|(\d+)/gi),ht:last(/\|ht\|([^|\r\n]+)/gi),hf:last(/\|hf\|([^|\r\n]+)/gi)});
+  }
+  const add=(meta,text,highlight)=>{if(plain(text).length>3)out.push({...meta,raw:text,highlight})};
+  for(const meta of source){
+    let text=meta.raw,pos=0;
+    while(pos<text.length){
+      if(active){
+        const close=text.indexOf("^-",pos);
+        if(close<0){add(meta,text.slice(pos),true);pos=text.length}
+        else{add(meta,text.slice(pos,close),true);active=false;pos=close+2}
+      }else{
+        const start=text.indexOf("^-{",pos);
+        if(start<0){add(meta,text.slice(pos),false);pos=text.length}
+        else{add(meta,text.slice(pos,start),false);active=true;pos=start+3}
+      }
+    }
+  }
+  return {segments:out,active};
+}
+function decoratePages(list){let active=false;return list.map(page=>{const parsed=sourceSegments(page.raw,active);active=parsed.active;return {...page,segments:parsed.segments}})}
 function inline(raw,highlight=false){let s=plain(raw).replace(/\^-\{/g,"").replace(/\^-/g,"").replace(/\^[A-Z]\{/g,"").replace(/[{}]/g,"");s=s.replace(/\^\*B/g,"\uE001").replace(/\^\*I/g,"\uE002").replace(/\^\*U/g,"\uE003").replace(/\^\*H/g,"\uE004").replace(/\^\*N/g,"\uE005");let html=rich(s).replace(/\uE001/g,'<strong>').replace(/\uE002/g,'<em>').replace(/\uE003/g,'<u>').replace(/\uE004/g,'<span class="linkish">').replace(/\uE005/g,'</strong></em></u></span>');return {highlight,html}}
 function bidValue(token){if(token==="p")return"Pass";if(token==="?")return"?";const m=token.match(/^([1-7])([cdhsn])$/i);if(!m)return rich(token);const suits={c:"♣",d:"♦",h:"♥",s:"♠",n:"NT"};return m[1]+(m[2].toLowerCase()==="n"?"NT":rich(suits[m[2].toLowerCase()]))}
 function auction(raw){const start=Math.min(3,(raw.match(/^\s*/)||[""])[0].length),tokens=[...raw.matchAll(/([1-7][cdhsn]|p|\?)/gi)].map(m=>m[1].toLowerCase());if(!tokens.length)return"";const cells=Array(start).fill("").concat(tokens);while(cells.length%4)cells.push("");const rows=[];for(let i=0;i<cells.length;i+=4)rows.push('<div class="auction-row">'+cells.slice(i,i+4).map(x=>'<span>'+bidValue(x)+'</span>').join("")+'</div>');return '<div class="auction"><div class="auction-head"><span>West</span><span>North</span><span>East</span><span>South</span></div>'+rows.join("")+'</div>'}
