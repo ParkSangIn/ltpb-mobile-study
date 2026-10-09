@@ -8,7 +8,7 @@ These rules were learned while extracting **More on Bidding → Responding to a 
 - `|ia|...|at|` is an auction diagram and `|ih|...|at|` is a hand diagram. The closing `|at|` can be followed by ordinary lesson text, so preserve that following text rather than discarding the whole segment.
 - `^-{` opens a highlighted callout. A following segment beginning with `{` continues the same callout, often across source screens. `^-` closes it.
 - Some grouped callouts have no final `^-`. If a later text segment does not begin with `{`, treat that as an implicit end of the callout. This prevents ordinary paragraphs from inheriting a preceding box.
-- `cs=5` is used for the opening/title treatment and should remain normal text, not a colored callout.
+- `cs=5` can be a colored callout, including the opening “Responding to a 1 of a suit opening” emphasis. Do not suppress it merely because it appears at the start of a chapter.
 - Do not infer callouts from `cs` alone: the brace markers determine whether it is a box; `cs` only determines its color.
 
 ## Regression examples
