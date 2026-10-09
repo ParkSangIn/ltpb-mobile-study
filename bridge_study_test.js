@@ -36,18 +36,32 @@ function decoratePages(list){let active=false;return list.map(page=>{const parse
 function inline(raw,highlight=false){let s=plain(raw).replace(/\|[a-z]{1,2}\|[^|]*/gi,"").replace(/\b(?:ht|hf|hc|cq|lb|md|mb|va|cs|nt|ls|lc|hs)\|[^|]*/gi,"").replace(/\^-\{/g,"").replace(/\^-/g,"").replace(/\^[A-Z]\{/g,"").replace(/[{}]/g,"");s=s.replace(/\^\*B/g,"\uE001").replace(/\^\*I/g,"\uE002").replace(/\^\*U/g,"\uE003").replace(/\^\*H/g,"\uE004").replace(/\^\*N/g,"\uE005");let html=rich(s).replace(/\uE001/g,'<strong>').replace(/\uE002/g,'<em>').replace(/\uE003/g,'<u>').replace(/\uE004/g,'<span class="linkish">').replace(/\uE005/g,'</strong></em></u></span>');return {highlight,html}}
 function bidValue(token){if(token==="p")return"Pass";if(token==="?")return"?";const m=token.match(/^([1-7])([cdhsn])$/i);if(!m)return rich(token);const suit=m[2].toLowerCase();if(suit==="n")return m[1]+"NT";const glyph={c:"♣",d:"♦",h:"♥",s:"♠"}[suit],color=(suit==="h"||suit==="d")?"red":"black";return m[1]+"<span class=\"auction-suit "+color+"\">"+glyph+"</span>"}
 function auction(raw){const start=Math.min(3,(raw.match(/^\s*/)||[""])[0].length),tokens=[...raw.matchAll(/([1-7][cdhsn]|p|\?)/gi)].map(m=>m[1].toLowerCase());if(!tokens.length)return"";const cells=Array(start).fill("").concat(tokens);while(cells.length%4)cells.push("");const rows=[];for(let i=0;i<cells.length;i+=4)rows.push('<div class="auction-row">'+cells.slice(i,i+4).map(x=>'<span>'+bidValue(x)+'</span>').join("")+'</div>');return '<div class="auction"><div class="auction-head"><span>West</span><span>North</span><span>East</span><span>South</span></div>'+rows.join("")+'</div>'}
-function diagramBlocks(raw){return [...raw.matchAll(/\|ia\|([^|]+)/gi)].map(m=>({pos:m.index,html:auction(m[1])})).filter(x=>x.html)}
+function diagramBlocks(raw){return [...raw.matchAll(/\|ia\|([^|]+)/gi)].map(m=>({pos:m.index,question:/\?/.test(m[1]),html:auction(m[1])})).filter(x=>x.html)}
 function diagrams(raw){return diagramBlocks(raw).map(x=>x.html).join("")}
 function handHtml(code){let x=code.trim().replace(/^p/i,"");if(/^ss/i.test(x))x=x.slice(1);const held={s:"",h:"",d:"",c:""};for(const m of x.matchAll(/([shdc])([akqjt2-9]+)/gi))held[m[1].toLowerCase()]=m[2].toUpperCase();const rows=[["s","♠","black"],["h","♥","red"],["d","♦","red"],["c","♣","black"]].filter(r=>held[r[0]]).map(r=>'<div class="'+r[2]+'"><span>'+r[1]+'</span> '+held[r[0]].split("").join(" ")+'</div>').join("");return rows?'<div class="hand">'+rows+'</div>':""}
 function handBlocks(raw){return [...raw.matchAll(/\|ih\|([^|]+)/gi)].map(m=>({pos:m.index,html:handHtml(m[1])})).filter(x=>x.html)}
 function hands(raw){return handBlocks(raw).map(x=>x.html).join("")}
 function isCheck(raw){return /\|ia\|[^|]*\?/i.test(raw)}
+function textBlock(x){const p=inline(x.raw,x.highlight),tag=p.highlight?"aside":"p",classes=[p.highlight?"callout":"","cs-"+(x.cs||"0"),"ht-"+(x.ht||"default"),"hf-"+(x.hf||"default")].filter(Boolean).join(" ");return {pos:x.pos||0,html:"<"+tag+" class=\""+classes+"\">"+p.html+"</"+tag+">"}}
 function body(item,answer=false){
   const raw=normalizeRaw(item.raw),heading=title(raw),segments=item.segments||sourceSegments(raw,false).segments;
-  const blocks=segments.map(x=>{const p=inline(x.raw,x.highlight),tag=p.highlight?"aside":"p",classes=[p.highlight?"callout":"","cs-"+(x.cs||"0"),"ht-"+(x.ht||"default"),"hf-"+(x.hf||"default")].filter(Boolean).join(" ");return {pos:x.pos||0,html:"<"+tag+" class=\""+classes+"\">"+p.html+"</"+tag+">"}}).concat(diagramBlocks(raw),handBlocks(raw)).sort((a,b)=>a.pos-b.pos);
+  const blocks=segments.map(textBlock).concat(diagramBlocks(raw),handBlocks(raw)).sort((a,b)=>a.pos-b.pos);
   let out=heading?"<h2>"+rich(heading)+"</h2>":"";
   out+=blocks.length?blocks.map(x=>x.html).join(""):'<p class="empty">This screen contains a visual or interaction state in the original program.</p>';
   if(isCheck(raw)&&!answer)out+='<div class="selfcheck">Self-check prompt in the original lesson — think before moving on.</div>';
+  return out;
+}
+function reviewBody(item){
+  const raw=normalizeRaw(item.raw),heading=title(raw),segments=item.segments||sourceSegments(raw,false).segments,auctions=diagramBlocks(raw),question=auctions.find(x=>x.question),answer=auctions.find(x=>!x.question&&question&&x.pos>question.pos);
+  if(!question||!answer)return body(item);
+  const handsOnScreen=handBlocks(raw),text=segments.map(textBlock),intro=text.filter(x=>x.pos<question.pos),explanation=text.filter(x=>x.pos>answer.pos),labelMatch=raw.match(/\|lb\|([^|]+)/i),label=labelMatch?plain(labelMatch[1].replace(/\*B/g,"").replace(/\^\^[^|\s]*/g,"")):"Think about your response before moving on.";
+  let out=heading?"<h2>"+rich(heading)+"</h2>":"";
+  out+=intro.sort((a,b)=>a.pos-b.pos).map(x=>x.html).join("");
+  out+=question.html;
+  out+=handsOnScreen.sort((a,b)=>a.pos-b.pos).map(x=>x.html).join("");
+  out+='<div class="selfcheck">'+rich(label)+'</div>';
+  out+=answer.html;
+  out+=explanation.sort((a,b)=>a.pos-b.pos).map(x=>x.html).join("");
   return out;
 }
 const styledPages=decoratePages(pages),styledReviewPages=decoratePages(reviewPages);const checks=styledPages.map((p,i)=>({prompt:p,answer:styledPages[i+1]})).filter(x=>x.answer&&isCheck(x.prompt.raw));
@@ -57,7 +71,7 @@ function draw(){
     const heading=isLesson?"Responding to a 1 of a suit opening":"Responding to a 1 of a suit opening — Review and exercises";
     countEl.textContent=list.length+(isLesson?" original lesson screens · scroll":" original review screens · scroll");
     pageEl.className="chapter";
-    pageEl.innerHTML="<h2>"+heading+"</h2>"+list.map(p=>'<section class="source-screen">'+body(p)+'</section>').join("");
+    pageEl.innerHTML="<h2>"+heading+"</h2>"+list.map(p=>'<section class="source-screen">'+(isLesson?body(p):reviewBody(p))+'</section>').join("");
     $(".nav").hidden=true;
     return;
   }

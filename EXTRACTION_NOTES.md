@@ -30,3 +30,5 @@ These rules were learned while extracting **More on Bidding → Responding to a 
 - Render Review exercises as question/answer pairs: hide the answer state until the learner chooses to reveal it; never expose control markers such as |ht| or require typed answers.
 
 - Preserve source order when rendering a screen: interleave narrative text, hand diagrams, and auction diagrams by their original offsets. Normalize line-broken control markers before parsing so tokens such as |ht| never leak into lesson text.
+
+- In Review exercises, automatically order each detected question as: question auction (?), hand (|ih|), prompt (|lb|), answer auction, explanation. This is intentionally different from raw layout and matches the lesson-study flow.
