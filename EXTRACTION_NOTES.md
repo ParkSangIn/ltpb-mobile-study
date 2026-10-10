@@ -39,3 +39,6 @@ These rules were learned while extracting **More on Bidding → Responding to a 
 - Split raw chapter ranges on every `pg||` delimiter, not only delimiters at the start of a line. A source screen boundary can occur within a physical text line; line-anchored splitting silently loses screens.
 
 - A bare `|` left at a text segment edge is a source control delimiter, not printable content. Remove remaining pipe characters after control-code cleanup so they never appear at paragraph ends.
+
+- A text segment beginning with `{` is also a highlighted callout when no callout is active; do not require the longer `^-{` form. Some source boxes, including historical notes, use the short form.
+- The structural `}` that follows a diagram token such as `|ia|...|at|}` closes the diagram wrapper, not the surrounding callout. It must not implicitly end an active callout before a following `{...}` continuation screen.

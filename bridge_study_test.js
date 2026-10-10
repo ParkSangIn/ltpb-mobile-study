@@ -17,16 +17,16 @@ function sourceSegments(raw,active=false){raw=normalizeRaw(raw);
   for(const meta of source){
     let text=meta.raw,pos=0;
     // A continued callout must begin with {. Otherwise an omitted closing marker ends it.
-    if(active&&!/^\s*\{/.test(text))active=false;
+    if(active&&!/^\s*(?:\{|\}\s*$)/.test(text))active=false;
     while(pos<text.length){
       if(active){
         const close=text.indexOf("^-",pos);
         if(close<0){add(meta,text.slice(pos),true,pos);pos=text.length}
         else{add(meta,text.slice(pos,close),true,pos);active=false;pos=close+2}
       }else{
-        const start=text.indexOf("^-{",pos);
-        if(start<0){add(meta,text.slice(pos),false,pos);pos=text.length}
-        else{add(meta,text.slice(pos,start),false,pos);active=true;pos=start+3}
+        const start=text.indexOf("^-{",pos),bare=text.slice(pos).match(/^\s*\{/);
+        if(start<0&&!bare){add(meta,text.slice(pos),false,pos);pos=text.length}
+        else{const bareStart=bare?pos+bare[0].length-1:-1,open=(bareStart>=0&&(start<0||bareStart<start))?bareStart:start;add(meta,text.slice(pos,open),false,pos);active=true;pos=open+(open===bareStart?1:3)}
       }
     }
   }
