@@ -402,3 +402,24 @@ button, input {
   cursor: grabbing !important;
   user-select: none !important;
 }
+
+.rights-notice {
+  margin-top: 42px;
+  padding: 16px 0 4px;
+  border-top: 1px solid var(--sage);
+  color: #536966;
+  font: .78rem/1.45 Arial, Helvetica, sans-serif;
+}
+
+.rights-notice strong {
+  color: var(--green);
+  font-size: .82rem;
+}
+
+.rights-notice p {
+  margin: 7px 0;
+}
+
+.rights-notice a {
+  color: inherit;
+}
