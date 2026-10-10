@@ -388,3 +388,17 @@ p {
   flex: 1 1 260px;
   min-width: 0;
 }
+
+main {
+  cursor: grab;
+}
+
+button, input {
+  cursor: pointer;
+}
+
+.is-panning,
+.is-panning * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
