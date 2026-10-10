@@ -423,3 +423,25 @@ button, input {
 .rights-notice a {
   color: inherit;
 }
+.chapter-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 13px 0 0;
+  color: #627d72;
+  font: .74rem/1 Arial, Helvetica, sans-serif;
+}
+
+.chapter-nav select {
+  max-width: min(100%, 370px);
+  border: 1px solid var(--sage);
+  border-radius: 2px;
+  padding: 7px 26px 7px 8px;
+  background: #fff;
+  color: var(--green);
+  font: 700 .78rem/1 Arial, Helvetica, sans-serif;
+}
+
+@media(max-width:480px) {
+  .chapter-nav select { max-width: calc(100vw - 105px); }
+}
