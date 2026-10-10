@@ -10,6 +10,7 @@ These rules were learned while extracting **More on Bidding → Responding to a 
 - Some grouped callouts have no final `^-`. If a later text segment does not begin with `{`, treat that as an implicit end of the callout. This prevents ordinary paragraphs from inheriting a preceding box.
 - `cs=5` can be a colored callout, including the opening “Responding to a 1 of a suit opening” emphasis. Do not suppress it merely because it appears at the start of a chapter.
 - Do not infer callouts from `cs` alone: the brace markers determine whether it is a box; `cs` only determines its color.
+- When extracting a chapter or its review section, stop at the first following `|qx|` screen, regardless of its identifier. The next chapter may start with a normal lesson ID (for example `resp1nt`), not the expected next review ID.
 
 ## Regression examples
 
@@ -25,9 +26,9 @@ These rules were learned while extracting **More on Bidding → Responding to a 
 ## Study layers
 
 - Keep three distinct views: full lesson flow, embedded lesson quizzes, and the source chapter's separate Review and exercises section.
-- Card hands use Times New Roman only; lesson prose and auctions remain Arial-family.
+- Card hands use bold Arial; lesson prose and auctions remain Arial-family.
 
-- Render Review exercises as question/answer pairs: hide the answer state until the learner chooses to reveal it; never expose control markers such as |ht| or require typed answers.
+- Render Review exercises in scroll order without typed answers; never expose control markers such as |ht|.
 
 - Preserve source order when rendering a screen: interleave narrative text, hand diagrams, and auction diagrams by their original offsets. Normalize line-broken control markers before parsing so tokens such as |ht| never leak into lesson text.
 
