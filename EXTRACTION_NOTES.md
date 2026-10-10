@@ -37,3 +37,5 @@ These rules were learned while extracting **More on Bidding → Responding to a 
 - Positional control codes such as ^B, ^N, ^C, ^D, and ^P are not lesson text; strip them. Consecutive hand blocks or auction blocks may be grouped into a wrapping horizontal row to reproduce source layouts.
 
 - Split raw chapter ranges on every `pg||` delimiter, not only delimiters at the start of a line. A source screen boundary can occur within a physical text line; line-anchored splitting silently loses screens.
+
+- A bare `|` left at a text segment edge is a source control delimiter, not printable content. Remove remaining pipe characters after control-code cleanup so they never appear at paragraph ends.
